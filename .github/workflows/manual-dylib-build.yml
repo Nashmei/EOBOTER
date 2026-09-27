@@ -1,0 +1,35 @@
+name: Manual EOBOTER dylib Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-dylib:
+    runs-on: macos-15
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build arm64 iOS dylib
+        run: |
+          chmod +x Injected/build_dylib.sh
+          ./Injected/build_dylib.sh
+
+      - name: Verify dylib
+        run: |
+          test -s build/EOBOTER.dylib
+          file build/EOBOTER.dylib
+          shasum -a 256 build/EOBOTER.dylib
+
+      - name: Upload EOBOTER.dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: EOBOTER-dylib
+          path: build/EOBOTER.dylib
+          if-no-files-found: error
+          retention-days: 14
