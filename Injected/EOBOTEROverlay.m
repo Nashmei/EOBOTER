@@ -15,6 +15,9 @@ static NSString * const EOModel=@"google/diffusiongemma-26b-a4b-it";
 @property(nonatomic,strong)EOPassThroughWindow*overlayWindow;@property(nonatomic,strong)UIButton*bubble;@property(nonatomic,strong)UIView*panel;
 @property(nonatomic,strong)UITextView*logView;@property(nonatomic,strong)UILabel*marketLabel;@property(nonatomic,strong)UILabel*statusLabel;@property(nonatomic,strong)UITextField*keyField;
 @property(nonatomic,strong)NSArray<NSDictionary*>*lastCandidates;@property(nonatomic,strong)NSDictionary*externalMarketSnapshot;@property(nonatomic,strong)NSArray*externalCandles;@property(nonatomic,strong)NSDate*externalMarketUpdatedAt;@property(nonatomic,strong)NSDictionary*buyTarget;@property(nonatomic,strong)NSDictionary*sellTarget;@property(nonatomic,strong)NSDictionary*snapshot;@property(nonatomic,copy)NSString*learnDirection;@property(nonatomic,strong)UITapGestureRecognizer*learnTap;@property(nonatomic,strong)NSMutableDictionary<NSString*,NSDictionary*>*dataTargets;@property(nonatomic,strong)NSArray<NSString*>*mapQueue;@property(nonatomic)NSInteger mapIndex;
++ (instancetype)shared;
+- (void)applyInternalField:(NSString*)key value:(NSString*)value;
+- (void)log:(NSString*)s;
 @end
 
 static IMP EOOrigSetAmount=NULL,EOOrigSetAsset=NULL,EOOrigSetRateIndex=NULL;
