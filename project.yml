@@ -1,0 +1,17 @@
+name: EOBOTER
+options:
+  bundleIdPrefix: com.nashmei
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  EOBOTER:
+    type: application
+    platform: iOS
+    sources: [EOBOTER]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nashmei.eoboter
+        SWIFT_VERSION: 5.10
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: EOBOTER
+        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: NO
