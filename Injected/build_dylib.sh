@@ -15,6 +15,7 @@ mkdir -p build
   -framework UIKit \
   -framework Foundation \
   -framework CoreGraphics \
+  -framework Security \
   -Wl,-install_name,@executable_path/Frameworks/EOBOTER.dylib \
   -o build/EOBOTER.dylib
 
