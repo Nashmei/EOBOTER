@@ -1,6 +1,5 @@
 #import <UIKit/UIKit.h>
 #import <Security/Security.h>
-#import <CoreFoundation/CoreFoundation.h>
 #import <objc/runtime.h>
 
 static NSString * const EONVIDIAService=@"EOBOTER.NVIDIA";
@@ -17,13 +16,9 @@ static NSString * const EOModel=@"google/diffusiongemma-26b-a4b-it";
 @property(nonatomic,strong)NSArray<NSDictionary*>*lastCandidates;@property(nonatomic,strong)NSDictionary*externalMarketSnapshot;@property(nonatomic,strong)NSArray*externalCandles;@property(nonatomic,strong)NSDate*externalMarketUpdatedAt;@property(nonatomic,strong)NSDictionary*buyTarget;@property(nonatomic,strong)NSDictionary*sellTarget;@property(nonatomic,strong)NSDictionary*snapshot;@property(nonatomic,copy)NSString*learnDirection;@property(nonatomic,strong)UITapGestureRecognizer*learnTap;@property(nonatomic,strong)NSMutableDictionary<NSString*,NSDictionary*>*dataTargets;@property(nonatomic,strong)NSArray<NSString*>*mapQueue;@property(nonatomic)NSInteger mapIndex;
 @end
 
-static void EOMarketFeedNotification(CFNotificationCenterRef center,void *observer,CFStringRef name,const void *object,CFDictionaryRef userInfo){
- EOBOTEROverlay*o=(__bridge EOBOTEROverlay*)observer;NSDictionary*u=(__bridge NSDictionary*)userInfo;if(!o||![u isKindOfClass:NSDictionary.class])return;dispatch_async(dispatch_get_main_queue(),^{[o ingestMarketFeed:u];});
-}
-
 @implementation EOBOTEROverlay
 + (instancetype)shared{static id x;static dispatch_once_t o;dispatch_once(&o,^{x=[self new];});return x;}
-- (void)dealloc{CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),(__bridge const void*)self,NULL,NULL);}
+
 - (void)log:(NSString*)s{if(!s.length)return;NSLog(@"[EOBOTER] %@",s);dispatch_async(dispatch_get_main_queue(),^{if(!self.logView)return;NSString*n=self.logView.text.length?[self.logView.text stringByAppendingFormat:@"\n%@",s]:s;NSArray*r=[n componentsSeparatedByString:@"\n"];if(r.count>120)n=[[r subarrayWithRange:NSMakeRange(r.count-120,120)]componentsJoinedByString:@"\n"];self.logView.text=n;[self.logView scrollRangeToVisible:NSMakeRange(n.length,0)];});}
 - (void)install{dispatch_async(dispatch_get_main_queue(),^{if(self.overlayWindow)return;CGRect s=UIScreen.mainScreen.bounds;self.overlayWindow=[[EOPassThroughWindow alloc]initWithFrame:s];self.overlayWindow.windowLevel=UIWindowLevelAlert+100;self.overlayWindow.backgroundColor=UIColor.clearColor;UIViewController*vc=[UIViewController new];vc.view.backgroundColor=UIColor.clearColor;self.overlayWindow.rootViewController=vc;self.overlayWindow.hidden=NO;UIButton*b=[UIButton buttonWithType:UIButtonTypeSystem];b.frame=CGRectMake(s.size.width-72,150,56,56);b.layer.cornerRadius=28;b.backgroundColor=[UIColor colorWithWhite:.08 alpha:.94];[b setTitle:@"EO" forState:0];[b setTitleColor:UIColor.whiteColor forState:0];b.titleLabel.font=[UIFont boldSystemFontOfSize:16];[b addTarget:self action:@selector(togglePanel) forControlEvents:UIControlEventTouchUpInside];[b addGestureRecognizer:[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(drag:)]];[vc.view addSubview:b];self.bubble=b;self.overlayWindow.interactiveRoot=b;});}
 - (void)drag:(UIPanGestureRecognizer*)g{CGPoint d=[g translationInView:g.view.superview],c=g.view.center;c.x+=d.x;c.y+=d.y;CGRect s=UIScreen.mainScreen.bounds;c.x=MAX(28,MIN(s.size.width-28,c.x));c.y=MAX(50,MIN(s.size.height-50,c.y));g.view.center=c;[g setTranslation:CGPointZero inView:g.view.superview];}
@@ -67,7 +62,9 @@ self.logView=[[UITextView alloc]initWithFrame:CGRectMake(10,322,w-20,h-332)];sel
  self.externalMarketSnapshot=n;
  [self log:[NSString stringWithFormat:@"MARKET DATA accepted asset=%@ price=%@ amount=%@ expiry=%@ payout=%@",n[@"asset"]?:@"—",n[@"price"]?:@"—",n[@"investment"]?:@"—",n[@"expiry"]?:@"—",n[@"payout"]?:@"—"]];
 }
-- (void)startMarketFeed{static dispatch_once_t once;dispatch_once(&once,^{CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),(__bridge const void*)self,EOMarketFeedNotification,CFSTR("com.eoboter.market.updated"),NULL,CFNotificationSuspensionBehaviorDeliverImmediately);});}
+- (NSString*)marketFeedPath{return [NSTemporaryDirectory() stringByAppendingPathComponent:@"eoboter_market.json"];}
+- (void)startMarketFeed{[self pollMarketFeed];}
+- (void)pollMarketFeed{NSString*p=[self marketFeedPath];NSData*d=[NSData dataWithContentsOfFile:p options:0 error:nil];if(d.length){NSDictionary*j=[NSJSONSerialization JSONObjectWithData:d options:0 error:nil];if([j isKindOfClass:NSDictionary.class]){NSNumber*ts=j[@"timestamp"];NSTimeInterval now=NSDate.date.timeIntervalSince1970;if(!ts||fabs(now-ts.doubleValue)<=20.0)[self ingestMarketFeed:j];}}dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1*NSEC_PER_SEC)),dispatch_get_main_queue(),^{[self pollMarketFeed];});}
 - (void)ingestMarketFeed:(NSDictionary*)payload{
  NSDictionary*raw=[payload[@"snapshot"] isKindOfClass:NSDictionary.class]?payload[@"snapshot"]:payload;NSDictionary*n=[self normalizedMarketSnapshot:raw];
  NSArray*candles=[payload[@"candles"] isKindOfClass:NSArray.class]?payload[@"candles"]:nil;if(!n&&!candles.count){[self log:@"MARKET FEED rejected: no snapshot/candles"];return;}
