@@ -1,23 +1,21 @@
 # EOBOTER
 
-Independent AI-assisted trading research project for ExpertOption Web.
+Independent ExpertOption-oriented signal engine. Completely separate from MTBOT/MT5.
 
-> This repository is completely separate from MTBOT/MT5. No MTBOT credentials, configuration, Git history, or runtime state belong here.
+## Current mode
+Demo/signal mode only. Live ExpertOption execution stays disabled until a supported integration method is available.
 
-## Initial architecture
+## Pipeline
+Market closes -> Momentum / EMA / RSI -> Strategy Ranker -> bounded AI advisor -> Risk Manager -> decision/audit log.
 
-- `core/` — decision engine and session orchestration
-- `strategies/` — time-expiry signal strategies
-- `ai/` — bounded AI analysis layer
-- `gateways/` — ExpertOption integration boundary
-- `risk/` — stake/session risk controls
-- `storage/` — audit and trade records
-- `tests/` — automated tests
+A decision contains asset, UP/DOWN, confidence, expiry, payout requirement and calculated demo stake.
 
-## Safety defaults
+## Safety
+- No ExpertOption credentials, cookies or sessions in this repository.
+- No reverse-engineered/private ExpertOption protocol.
+- ExpertOptionWebGateway is non-executing by design.
+- Environment files, logs, databases, cookies and sessions are ignored.
+- MTBOT is not imported or modified.
 
-EOBOTER starts in **demo mode**. Live execution is not enabled by the initial scaffold. Secrets and browser/session credentials must never be committed.
-
-## Status
-
-Initial scaffold only. The ExpertOption gateway is intentionally a non-executing interface until the supported integration method is verified.
+## Run
+Install requirements, run main.py, then run pytest.
