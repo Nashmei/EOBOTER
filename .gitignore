@@ -14,3 +14,12 @@ sessions/
 cookies/
 *.log
 .DS_Store
+
+# iOS / Xcode
+.DS_Store
+DerivedData/
+.build/
+*.xcuserstate
+xcuserdata/
+Secrets.plist
+*.key
