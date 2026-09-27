@@ -1,6 +1,9 @@
 import argparse,sys
 from pathlib import Path
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from dotenv import load_dotenv
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT))
+load_dotenv(ROOT/".env")
 from core.engine import EOBoterEngine
 from core.settings import Settings
 from market.binance import BinanceMarketData
