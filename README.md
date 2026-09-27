@@ -1,21 +1,30 @@
-# EOBOTER
+# EOBOTER for iPhone
 
-Independent ExpertOption-oriented signal engine. Completely separate from MTBOT/MT5.
+Local-first SwiftUI project that hosts the official EO web experience in `WKWebView` and keeps the bot components on the iPhone.
 
-## Current mode
-Demo/signal mode only. Live ExpertOption execution stays disabled until a supported integration method is available.
+## Architecture
 
-## Pipeline
-Market closes -> Momentum / EMA / RSI -> Strategy Ranker -> bounded AI advisor -> Risk Manager -> decision/audit log.
+`EO WKWebView -> visible market snapshot -> NVIDIA NIM analysis -> Risk Manager -> UP / DOWN / SKIP -> ExecutionGateway`
 
-A decision contains asset, UP/DOWN, confidence, expiry, payout requirement and calculated demo stake.
+## Included
+- SwiftUI iOS shell and tabs
+- Persistent WebKit website data store for the user's normal EO web session
+- EO bridge for reading visible on-page market state
+- NVIDIA NIM chat-completions client
+- NVIDIA API key stored in iOS Keychain
+- Risk gate and bounded decisions
+- Bot status/settings/log screens
+- Execution gateway abstraction
+- XcodeGen `project.yml`
+- Fork/setup guide
 
-## Safety
-- No ExpertOption credentials, cookies or sessions in this repository.
-- No reverse-engineered/private ExpertOption protocol.
-- ExpertOptionWebGateway is non-executing by design.
-- Environment files, logs, databases, cookies and sessions are ignored.
-- MTBOT is not imported or modified.
+## Important current state
+Automatic EO order execution is disabled by default. The real on-device EO page structure must be validated on an iPhone before wiring any UI execution. No private EO protocol or reverse-engineered API is included.
 
-## Run
-Install requirements, run main.py, then run pytest.
+## Secrets
+Never commit NVIDIA keys, EO credentials, cookies, session exports, signing keys, or provisioning secrets. The app stores the NVIDIA API key in Keychain.
+
+## Build later
+No build has been performed as part of repository preparation. See `FORK_SETUP.md` after forking.
+
+The earlier Python prototype remains in Git history; the iOS app is the active direction.
