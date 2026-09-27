@@ -14,6 +14,7 @@ mkdir -p build
   Injected/EOBOTEROverlay.m \
   -framework UIKit \
   -framework Foundation \
+  -framework CoreGraphics \
   -Wl,-install_name,@executable_path/Frameworks/EOBOTER.dylib \
   -o build/EOBOTER.dylib
 
