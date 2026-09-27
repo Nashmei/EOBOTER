@@ -1,4 +1,4 @@
-name: Manual iOS Build
+name: Manual Unsigned IPA Build
 
 on:
   workflow_dispatch:
@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 20
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,12 +21,40 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build for iOS Simulator
+      - name: Build unsigned app for iPhone
         run: |
+          set -euo pipefail
           xcodebuild \
             -project EOBOTER.xcodeproj \
             -scheme EOBOTER \
-            -sdk iphonesimulator \
-            -configuration Debug \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/EOBOTERDerivedData" \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
             build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$RUNNER_TEMP/EOBOTERDerivedData/Build/Products/Release-iphoneos/EOBOTER.app"
+          test -d "$APP_PATH"
+
+          rm -rf "$RUNNER_TEMP/ipa"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/EOBOTER.app"
+
+          cd "$RUNNER_TEMP/ipa"
+          /usr/bin/zip -qry "$GITHUB_WORKSPACE/EOBOTER-unsigned.ipa" Payload
+
+          test -s "$GITHUB_WORKSPACE/EOBOTER-unsigned.ipa"
+          /usr/bin/unzip -l "$GITHUB_WORKSPACE/EOBOTER-unsigned.ipa" | head -40
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: EOBOTER-unsigned-ipa
+          path: EOBOTER-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
