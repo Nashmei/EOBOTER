@@ -9,7 +9,10 @@ final class NVIDIAClient {
         }
 
         let system = "You are a bounded market-analysis component. Return JSON only with direction UP, DOWN, or SKIP; confidence 0...1; and a concise reason. Never invent missing market data."
-        let user = "Asset: \(snapshot.asset); price: \(snapshot.visiblePrice.map(String.init) ?? "missing"); payout: \(snapshot.payoutPercent.map(String.init) ?? "missing"); expiry: \(snapshot.expirySeconds.map(String.init) ?? "missing")."
+        let priceText: String = snapshot.visiblePrice.map { String($0) } ?? "missing"
+        let payoutText: String = snapshot.payoutPercent.map { String($0) } ?? "missing"
+        let expiryText: String = snapshot.expirySeconds.map { String($0) } ?? "missing"
+        let user = "Asset: \(snapshot.asset); price: \(priceText); payout: \(payoutText); expiry: \(expiryText)."
 
         let payload: [String: Any] = [
             "model": model,
