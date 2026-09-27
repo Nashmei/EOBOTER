@@ -1,85 +1,60 @@
 #import <UIKit/UIKit.h>
+#import <Security/Security.h>
 
-@interface EOPassThroughWindow : UIWindow
-@property(nonatomic,weak) UIView *interactiveRoot;
-@end
+static NSString * const EONVIDIAService=@"EOBOTER.NVIDIA";
+static NSString * const EONVIDIAAccount=@"API_KEY";
+static NSString * const EOModel=@"google/diffusiongemma-26b-a4b-it";
+
+@interface EOPassThroughWindow:UIWindow @property(nonatomic,weak)UIView*interactiveRoot;@end
 @implementation EOPassThroughWindow
-- (UIView *)hitTest:(CGPoint)p withEvent:(UIEvent *)e {
-    UIView *h=[super hitTest:p withEvent:e];
-    if(!h||h==self||h==self.rootViewController.view)return nil;
-    return (self.interactiveRoot&&[h isDescendantOfView:self.interactiveRoot])?h:nil;
-}
+- (UIView*)hitTest:(CGPoint)p withEvent:(UIEvent*)e{UIView*h=[super hitTest:p withEvent:e];if(!h||h==self||h==self.rootViewController.view)return nil;return(self.interactiveRoot&&[h isDescendantOfView:self.interactiveRoot])?h:nil;}
 @end
 
-@interface EOBOTEROverlay : NSObject
-@property(nonatomic,strong) EOPassThroughWindow *overlayWindow;
-@property(nonatomic,strong) UIButton *bubble;
-@property(nonatomic,strong) UIView *panel;
-@property(nonatomic,strong) UITextView *logView;
-@property(nonatomic,strong) UILabel *marketLabel;
-@property(nonatomic,strong) UILabel *statusLabel;
-@property(nonatomic,strong) NSArray<NSDictionary*> *lastCandidates;
+@interface EOBOTEROverlay:NSObject
+@property(nonatomic,strong)EOPassThroughWindow*overlayWindow;@property(nonatomic,strong)UIButton*bubble;@property(nonatomic,strong)UIView*panel;
+@property(nonatomic,strong)UITextView*logView;@property(nonatomic,strong)UILabel*marketLabel;@property(nonatomic,strong)UILabel*statusLabel;@property(nonatomic,strong)UITextField*keyField;
+@property(nonatomic,strong)NSArray<NSDictionary*>*lastCandidates;@property(nonatomic,strong)NSDictionary*buyTarget;@property(nonatomic,strong)NSDictionary*sellTarget;@property(nonatomic,strong)NSDictionary*snapshot;
 @end
 
 @implementation EOBOTEROverlay
 + (instancetype)shared{static id x;static dispatch_once_t o;dispatch_once(&o,^{x=[self new];});return x;}
-- (void)log:(NSString*)s{
-    if(!s.length)return;NSLog(@"[EOBOTER] %@",s);if(!self.logView)return;
-    NSString*n=self.logView.text.length?[self.logView.text stringByAppendingFormat:@"\n%@",s]:s;
-    NSArray*r=[n componentsSeparatedByString:@"\n"];if(r.count>100)n=[[r subarrayWithRange:NSMakeRange(r.count-100,100)]componentsJoinedByString:@"\n"];
-    self.logView.text=n;[self.logView scrollRangeToVisible:NSMakeRange(n.length,0)];
-}
-- (void)install{
-    dispatch_async(dispatch_get_main_queue(),^{if(self.overlayWindow)return;CGRect s=UIScreen.mainScreen.bounds;
-        self.overlayWindow=[[EOPassThroughWindow alloc]initWithFrame:s];self.overlayWindow.windowLevel=UIWindowLevelAlert+100;self.overlayWindow.backgroundColor=UIColor.clearColor;
-        UIViewController*vc=[UIViewController new];vc.view.backgroundColor=UIColor.clearColor;self.overlayWindow.rootViewController=vc;self.overlayWindow.hidden=NO;
-        UIButton*b=[UIButton buttonWithType:UIButtonTypeSystem];b.frame=CGRectMake(s.size.width-72,150,56,56);b.layer.cornerRadius=28;b.backgroundColor=[UIColor colorWithWhite:.08 alpha:.94];
-        [b setTitle:@"EO" forState:UIControlStateNormal];[b setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];b.titleLabel.font=[UIFont boldSystemFontOfSize:16];
-        [b addTarget:self action:@selector(togglePanel) forControlEvents:UIControlEventTouchUpInside];[b addGestureRecognizer:[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(drag:)]];
-        [vc.view addSubview:b];self.bubble=b;self.overlayWindow.interactiveRoot=b;
-    });
-}
+- (void)log:(NSString*)s{if(!s.length)return;NSLog(@"[EOBOTER] %@",s);dispatch_async(dispatch_get_main_queue(),^{if(!self.logView)return;NSString*n=self.logView.text.length?[self.logView.text stringByAppendingFormat:@"\n%@",s]:s;NSArray*r=[n componentsSeparatedByString:@"\n"];if(r.count>120)n=[[r subarrayWithRange:NSMakeRange(r.count-120,120)]componentsJoinedByString:@"\n"];self.logView.text=n;[self.logView scrollRangeToVisible:NSMakeRange(n.length,0)];});}
+- (void)install{dispatch_async(dispatch_get_main_queue(),^{if(self.overlayWindow)return;CGRect s=UIScreen.mainScreen.bounds;self.overlayWindow=[[EOPassThroughWindow alloc]initWithFrame:s];self.overlayWindow.windowLevel=UIWindowLevelAlert+100;self.overlayWindow.backgroundColor=UIColor.clearColor;UIViewController*vc=[UIViewController new];vc.view.backgroundColor=UIColor.clearColor;self.overlayWindow.rootViewController=vc;self.overlayWindow.hidden=NO;UIButton*b=[UIButton buttonWithType:UIButtonTypeSystem];b.frame=CGRectMake(s.size.width-72,150,56,56);b.layer.cornerRadius=28;b.backgroundColor=[UIColor colorWithWhite:.08 alpha:.94];[b setTitle:@"EO" forState:0];[b setTitleColor:UIColor.whiteColor forState:0];b.titleLabel.font=[UIFont boldSystemFontOfSize:16];[b addTarget:self action:@selector(togglePanel) forControlEvents:UIControlEventTouchUpInside];[b addGestureRecognizer:[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(drag:)]];[vc.view addSubview:b];self.bubble=b;self.overlayWindow.interactiveRoot=b;});}
 - (void)drag:(UIPanGestureRecognizer*)g{CGPoint d=[g translationInView:g.view.superview],c=g.view.center;c.x+=d.x;c.y+=d.y;CGRect s=UIScreen.mainScreen.bounds;c.x=MAX(28,MIN(s.size.width-28,c.x));c.y=MAX(50,MIN(s.size.height-50,c.y));g.view.center=c;[g setTranslation:CGPointZero inView:g.view.superview];}
-- (UIButton*)btn:(NSString*)t x:(CGFloat)x y:(CGFloat)y w:(CGFloat)w action:(SEL)a{UIButton*b=[UIButton buttonWithType:UIButtonTypeSystem];b.frame=CGRectMake(x,y,w,44);b.layer.cornerRadius=10;b.backgroundColor=[UIColor colorWithWhite:.16 alpha:1];[b setTitle:t forState:UIControlStateNormal];[b setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];b.titleLabel.font=[UIFont boldSystemFontOfSize:12];[b addTarget:self action:a forControlEvents:UIControlEventTouchUpInside];return b;}
-- (void)togglePanel{
-    if(self.panel){[self.panel removeFromSuperview];self.panel=nil;self.logView=nil;self.overlayWindow.interactiveRoot=self.bubble;return;}
-    CGRect s=UIScreen.mainScreen.bounds;CGFloat w=s.size.width-20,h=MIN(650,s.size.height-80);UIView*p=[[UIView alloc]initWithFrame:CGRectMake(10,55,w,h)];p.backgroundColor=[UIColor colorWithWhite:.045 alpha:.98];p.layer.cornerRadius=20;
-    UILabel*t=[[UILabel alloc]initWithFrame:CGRectMake(16,12,w-80,32)];t.text=@"EOBOTER • SAFE RN LAB";t.textColor=UIColor.whiteColor;t.font=[UIFont boldSystemFontOfSize:20];[p addSubview:t];[p addSubview:[self btn:@"×" x:w-56 y:7 w:44 action:@selector(togglePanel)]];
-    self.statusLabel=[[UILabel alloc]initWithFrame:CGRectMake(16,48,w-32,34)];self.statusLabel.text=@"Safe UIView scan • no React KVC";self.statusLabel.textColor=UIColor.lightGrayColor;self.statusLabel.font=[UIFont systemFontOfSize:11];[p addSubview:self.statusLabel];
-    self.marketLabel=[[UILabel alloc]initWithFrame:CGRectMake(16,82,w-32,76)];self.marketLabel.numberOfLines=4;self.marketLabel.text=@"Asset: —\nRN/Fabric: not scanned\nBUY/SELL: unknown";self.marketLabel.textColor=UIColor.whiteColor;self.marketLabel.font=[UIFont monospacedSystemFontOfSize:12 weight:UIFontWeightRegular];[p addSubview:self.marketLabel];
-    CGFloat bw=(w-44)/3;[p addSubview:[self btn:@"SAFE SCAN" x:12 y:166 w:bw action:@selector(scanSafe)]];[p addSubview:[self btn:@"TEST BUY" x:22+bw y:166 w:bw action:@selector(testBuy)]];[p addSubview:[self btn:@"TEST SELL" x:32+2*bw y:166 w:bw action:@selector(testSell)]];
-    self.logView=[[UITextView alloc]initWithFrame:CGRectMake(12,220,w-24,h-232)];self.logView.editable=NO;self.logView.selectable=YES;self.logView.backgroundColor=[UIColor colorWithWhite:.09 alpha:1];self.logView.textColor=UIColor.whiteColor;self.logView.font=[UIFont monospacedSystemFontOfSize:10 weight:UIFontWeightRegular];self.logView.layer.cornerRadius=11;[p addSubview:self.logView];
-    [self.overlayWindow.rootViewController.view addSubview:p];self.panel=p;self.overlayWindow.interactiveRoot=p;[self log:@"SAFE RN LAB ready — KVC disabled"];
-}
-- (UIWindow*)hostWindow{for(UIScene*sc in UIApplication.sharedApplication.connectedScenes)if(sc.activationState==UISceneActivationStateForegroundActive&&[sc isKindOfClass:UIWindowScene.class])for(UIWindow*w in ((UIWindowScene*)sc).windows)if(w!=self.overlayWindow&&!w.hidden&&w.alpha>.01&&w.windowLevel==UIWindowLevelNormal)return w;return nil;}
-- (NSString*)viewText:(UIView*)v{
-    NSMutableArray*a=[NSMutableArray array];
-    if([v isKindOfClass:UILabel.class]){NSString*x=((UILabel*)v).text;if(x.length)[a addObject:x];}
-    if([v isKindOfClass:UIButton.class]){NSString*x=[((UIButton*)v)titleForState:UIControlStateNormal];if(x.length)[a addObject:x];}
-    NSString*l=v.accessibilityLabel,*val=v.accessibilityValue,*ident=v.accessibilityIdentifier;if(l.length)[a addObject:l];if(val.length)[a addObject:val];if(ident.length)[a addObject:ident];
-    return [[[a componentsJoinedByString:@" | "]uppercaseString]stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-}
-- (BOOL)isRNClass:(NSString*)c{return [c containsString:@"RCT"]||[c containsString:@"RN"]||[c containsString:@"Fabric"]||[c containsString:@"ExpertOption"]||[c containsString:@"Plot"];}
-- (void)walk:(UIView*)v out:(NSMutableArray*)out depth:(NSInteger)d{
-    if(!v||d>24||v.hidden||v.alpha<.02||out.count>=1500)return;
-    CGRect r=[v convertRect:v.bounds toView:nil],screen=UIScreen.mainScreen.bounds;if(CGRectIsEmpty(r)||r.size.width<4||r.size.height<4||!CGRectIntersectsRect(r,screen))return;
-    NSString*c=NSStringFromClass(v.class)?:@"",*tx=[self viewText:v];BOOL rn=[self isRNClass:c];BOOL act=[v isKindOfClass:UIControl.class]||v.gestureRecognizers.count>0||v.isAccessibilityElement;
-    if(tx.length||rn||act)[out addObject:@{@"view":v,@"class":c,@"text":tx?:@"",@"rn":@(rn),@"act":@(act),@"x":@(r.origin.x),@"y":@(r.origin.y),@"w":@(r.size.width),@"h":@(r.size.height)}];
-    NSArray*subs=[v.subviews copy];for(UIView*s in subs)[self walk:s out:out depth:d+1];
-}
-- (BOOL)has:(NSString*)s words:(NSArray*)ws{for(NSString*w in ws)if([s containsString:[w uppercaseString]])return YES;return NO;}
-- (void)scanSafe{
-    UIWindow*w=[self hostWindow];if(!w){[self log:@"SCAN blocked: host window not found"];return;}
-    NSMutableArray*a=[NSMutableArray array];[self walk:w out:a depth:0];self.lastCandidates=a;
-    NSArray*bw=@[@"شراء",@"BUY",@"CALL",@"ATBUYBUTTON"],*sw=@[@"بيع",@"SELL",@"PUT"],*aw=@[@"OTC",@"EUR /",@"EUR/",@"USD /",@"USD/",@"GBP /",@"GBP/"];
-    NSUInteger rn=0,bu=0,se=0;NSString*asset=@"—";
-    for(NSDictionary*d in a){NSString*t=d[@"text"],*c=d[@"class"];if([d[@"rn"]boolValue])rn++;if([self has:t words:bw])bu++;if([self has:t words:sw])se++;if(asset.length==1&&[self has:t words:aw])asset=t;if([c containsString:@"ExpertOption"]||[c containsString:@"MobilePlot"])[self log:[NSString stringWithFormat:@"EO class: %@ %.0f,%.0f %.0fx%.0f",c,[d[@"x"]doubleValue],[d[@"y"]doubleValue],[d[@"w"]doubleValue],[d[@"h"]doubleValue]]];}
-    self.marketLabel.text=[NSString stringWithFormat:@"Asset: %@\nRN/Fabric views: %lu\nBUY candidates: %lu • SELL: %lu",asset,(unsigned long)rn,(unsigned long)bu,(unsigned long)se];
-    [self log:[NSString stringWithFormat:@"SAFE SCAN total=%lu rn=%lu buy=%lu sell=%lu",(unsigned long)a.count,(unsigned long)rn,(unsigned long)bu,(unsigned long)se]];
-    NSInteger n=0;for(NSDictionary*d in a){if(n>=24)break;if([d[@"rn"]boolValue]||[self has:d[@"text"] words:@[@"شراء",@"بيع",@"BUY",@"SELL",@"OTC"]]){[self log:[NSString stringWithFormat:@"[%@] act=%@ %.0f,%.0f %.0fx%.0f | %@",d[@"class"],[d[@"act"]boolValue]?@"Y":@"N",[d[@"x"]doubleValue],[d[@"y"]doubleValue],[d[@"w"]doubleValue],[d[@"h"]doubleValue],d[@"text"]]];n++;}}
-}
-- (NSArray*)matches:(BOOL)buy{NSArray*ws=buy?@[@"شراء",@"BUY",@"CALL",@"ATBUYBUTTON"]:@[@"بيع",@"SELL",@"PUT"];NSMutableArray*m=[NSMutableArray array];for(NSDictionary*d in self.lastCandidates?:@[])if([d[@"act"]boolValue]&&[self has:d[@"text"] words:ws])[m addObject:d];return m;}
-- (void)test:(BOOL)buy{[self scanSafe];NSArray*m=[self matches:buy];NSString*n=buy?@"BUY":@"SELL";if(m.count!=1){self.statusLabel.text=[NSString stringWithFormat:@"%@ blocked: %lu safe targets",n,(unsigned long)m.count];[self log:self.statusLabel.text];return;}UIView*v=m.firstObject[@"view"];if([v isKindOfClass:UIControl.class]){[(UIControl*)v sendActionsForControlEvents:UIControlEventTouchUpInside];self.statusLabel.text=[NSString stringWithFormat:@"%@ UIControl dispatched",n];[self log:self.statusLabel.text];}else{self.statusLabel.text=[NSString stringWithFormat:@"%@ target found (%@), dispatcher not mapped",n,NSStringFromClass(v.class)];[self log:self.statusLabel.text];}}
+- (UIButton*)btn:(NSString*)t frame:(CGRect)f action:(SEL)a{UIButton*b=[UIButton buttonWithType:UIButtonTypeSystem];b.frame=f;b.layer.cornerRadius=9;b.backgroundColor=[UIColor colorWithWhite:.16 alpha:1];[b setTitle:t forState:0];[b setTitleColor:UIColor.whiteColor forState:0];b.titleLabel.font=[UIFont boldSystemFontOfSize:11];[b addTarget:self action:a forControlEvents:UIControlEventTouchUpInside];return b;}
+- (void)togglePanel{if(self.panel){[self.panel removeFromSuperview];self.panel=nil;self.logView=nil;self.overlayWindow.interactiveRoot=self.bubble;return;}CGRect s=UIScreen.mainScreen.bounds;CGFloat w=s.size.width-16,h=MIN(760,s.size.height-45);UIView*p=[[UIView alloc]initWithFrame:CGRectMake(8,35,w,h)];p.backgroundColor=[UIColor colorWithWhite:.04 alpha:.985];p.layer.cornerRadius=20;UILabel*t=[[UILabel alloc]initWithFrame:CGRectMake(14,10,w-70,30)];t.text=@"EOBOTER • LIVE LAB";t.textColor=UIColor.whiteColor;t.font=[UIFont boldSystemFontOfSize:20];[p addSubview:t];[p addSubview:[self btn:@"×" frame:CGRectMake(w-52,6,42,38) action:@selector(togglePanel)]];
+self.statusLabel=[[UILabel alloc]initWithFrame:CGRectMake(14,43,w-28,28)];self.statusLabel.text=@"Demo verification • AI never auto-executes";self.statusLabel.textColor=UIColor.lightGrayColor;self.statusLabel.font=[UIFont systemFontOfSize:10];[p addSubview:self.statusLabel];
+self.marketLabel=[[UILabel alloc]initWithFrame:CGRectMake(14,72,w-28,66)];self.marketLabel.numberOfLines=4;self.marketLabel.text=@"Asset: —\nInvestment: —  Expiry: —  Payout: —\nBUY/SELL: not mapped";self.marketLabel.textColor=UIColor.whiteColor;self.marketLabel.font=[UIFont monospacedSystemFontOfSize:11 weight:UIFontWeightRegular];[p addSubview:self.marketLabel];
+CGFloat bw=(w-40)/3;[p addSubview:[self btn:@"SCAN" frame:CGRectMake(10,142,bw,40) action:@selector(scanSafe)]];[p addSubview:[self btn:@"TEST BUY" frame:CGRectMake(20+bw,142,bw,40) action:@selector(testBuy)]];[p addSubview:[self btn:@"TEST SELL" frame:CGRectMake(30+2*bw,142,bw,40) action:@selector(testSell)]];
+self.keyField=[[UITextField alloc]initWithFrame:CGRectMake(10,190,w-105,38)];self.keyField.secureTextEntry=YES;self.keyField.placeholder=@"NVIDIA API key";self.keyField.textColor=UIColor.whiteColor;self.keyField.backgroundColor=[UIColor colorWithWhite:.11 alpha:1];self.keyField.layer.cornerRadius=8;self.keyField.leftView=[[UIView alloc]initWithFrame:CGRectMake(0,0,10,1)];self.keyField.leftViewMode=UITextFieldViewModeAlways;[p addSubview:self.keyField];[p addSubview:[self btn:@"SAVE" frame:CGRectMake(w-87,190,77,38) action:@selector(saveKey)]];
+[p addSubview:[self btn:@"ANALYZE NOW • DIFFUSIONGEMMA" frame:CGRectMake(10,236,w-20,42) action:@selector(analyzeNow)]];
+self.logView=[[UITextView alloc]initWithFrame:CGRectMake(10,286,w-20,h-296)];self.logView.editable=NO;self.logView.selectable=YES;self.logView.backgroundColor=[UIColor colorWithWhite:.085 alpha:1];self.logView.textColor=UIColor.whiteColor;self.logView.font=[UIFont monospacedSystemFontOfSize:9.5 weight:UIFontWeightRegular];self.logView.layer.cornerRadius=10;[p addSubview:self.logView];[self.overlayWindow.rootViewController.view addSubview:p];self.panel=p;self.overlayWindow.interactiveRoot=p;[self log:@"LIVE LAB ready"];}
+
+- (NSData*)keyData:(NSString*)s{return[s dataUsingEncoding:NSUTF8StringEncoding];}
+- (NSDictionary*)keyQuery{return@{(__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,(__bridge id)kSecAttrService:EONVIDIAService,(__bridge id)kSecAttrAccount:EONVIDIAAccount};}
+- (void)saveKey{NSString*k=[self.keyField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];if(!k.length){[self log:@"NVIDIA key empty"];return;}NSMutableDictionary*q=[[self keyQuery]mutableCopy];SecItemDelete((__bridge CFDictionaryRef)q);q[(__bridge id)kSecValueData]=[self keyData:k];q[(__bridge id)kSecAttrAccessible]=(__bridge id)kSecAttrAccessibleWhenUnlockedThisDeviceOnly;OSStatus st=SecItemAdd((__bridge CFDictionaryRef)q,NULL);self.keyField.text=@"";[self log:st==errSecSuccess?@"NVIDIA key saved in Keychain": [NSString stringWithFormat:@"Keychain save failed: %d",(int)st]];}
+- (NSString*)readKey{NSMutableDictionary*q=[[self keyQuery]mutableCopy];q[(__bridge id)kSecReturnData]=@YES;q[(__bridge id)kSecMatchLimit]=(__bridge id)kSecMatchLimitOne;CFTypeRef out=NULL;if(SecItemCopyMatching((__bridge CFDictionaryRef)q,&out)!=errSecSuccess)return nil;NSData*d=CFBridgingRelease(out);return[[NSString alloc]initWithData:d encoding:NSUTF8StringEncoding];}
+
+- (UIWindow*)hostWindow{for(UIScene*sc in UIApplication.sharedApplication.connectedScenes)if(sc.activationState==UISceneActivationStateForegroundActive&&[sc isKindOfClass:UIWindowScene.class])for(UIWindow*w in((UIWindowScene*)sc).windows)if(w!=self.overlayWindow&&!w.hidden&&w.alpha>.01&&w.windowLevel==UIWindowLevelNormal)return w;return nil;}
+- (NSString*)text:(UIView*)v{NSMutableArray*a=[NSMutableArray array];if([v isKindOfClass:UILabel.class]&&((UILabel*)v).text.length)[a addObject:((UILabel*)v).text];if([v isKindOfClass:UIButton.class]){NSString*x=[((UIButton*)v)titleForState:0];if(x.length)[a addObject:x];}for(NSString*x in@[v.accessibilityLabel?:@"",v.accessibilityValue?:@"",v.accessibilityIdentifier?:@""])if(x.length)[a addObject:x];return[[a componentsJoinedByString:@" | "]stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];}
+- (BOOL)rn:(NSString*)c{return[c containsString:@"RCT"]||[c containsString:@"RN"]||[c containsString:@"Fabric"]||[c containsString:@"ExpertOption"]||[c containsString:@"Plot"];}
+- (void)walk:(UIView*)v out:(NSMutableArray*)o depth:(NSInteger)d{if(!v||d>26||v.hidden||v.alpha<.02||o.count>=1800)return;CGRect r=[v convertRect:v.bounds toView:nil],scr=UIScreen.mainScreen.bounds;if(CGRectIsEmpty(r)||r.size.width<3||r.size.height<3||!CGRectIntersectsRect(r,scr))return;NSString*c=NSStringFromClass(v.class)?:@"",*tx=[self text:v];BOOL act=[v isKindOfClass:UIControl.class]||v.gestureRecognizers.count>0||v.isAccessibilityElement;if(tx.length||[self rn:c]||act)[o addObject:@{@"view":v,@"class":c,@"text":tx?:@"",@"act":@(act),@"rn":@([self rn:c]),@"x":@(r.origin.x),@"y":@(r.origin.y),@"w":@(r.size.width),@"h":@(r.size.height)}];for(UIView*s in[v.subviews copy])[self walk:s out:o depth:d+1];}
+- (BOOL)has:(NSString*)s words:(NSArray*)ws{NSString*u=s.uppercaseString;for(NSString*w in ws)if([u containsString:w.uppercaseString])return YES;return NO;}
+- (UIView*)interactiveAncestor:(UIView*)v{UIView*x=v;for(int i=0;i<8&&x;i++,x=x.superview){if([x isKindOfClass:UIControl.class]||x.gestureRecognizers.count>0||x.isAccessibilityElement)return x;}return nil;}
+- (NSDictionary*)dictForView:(UIView*)v text:(NSString*)tx{CGRect r=[v convertRect:v.bounds toView:nil];return@{@"view":v,@"class":NSStringFromClass(v.class)?:@"",@"text":tx?:@"",@"x":@(r.origin.x),@"y":@(r.origin.y),@"w":@(r.size.width),@"h":@(r.size.height)};}
+- (NSString*)firstText:(NSArray*)a words:(NSArray*)ws{for(NSDictionary*d in a)if([self has:d[@"text"] words:ws])return d[@"text"];return@"—";}
+- (void)scanSafe{UIWindow*w=[self hostWindow];if(!w){[self log:@"SCAN: EO window missing"];return;}NSMutableArray*a=[NSMutableArray array];[self walk:w out:a depth:0];self.lastCandidates=a;self.buyTarget=nil;self.sellTarget=nil;
+NSArray*buy=@[@"شراء",@"BUY",@"CALL"],*sell=@[@"بيع",@"SELL",@"PUT"];for(NSDictionary*d in a){NSString*tx=d[@"text"];UIView*v=d[@"view"];if(!self.buyTarget&&[self has:tx words:buy]){UIView*p=[self interactiveAncestor:v];if(p)self.buyTarget=[self dictForView:p text:tx];}if(!self.sellTarget&&[self has:tx words:sell]){UIView*p=[self interactiveAncestor:v];if(p)self.sellTarget=[self dictForView:p text:tx];}}
+NSString*asset=[self firstText:a words:@[@"OTC",@"EUR /",@"EUR/",@"GBP /",@"GBP/",@"USD /",@"USD/"]];NSString*investment=[self firstText:a words:@[@"الاستثمار",@"INVESTMENT",@"$"]];NSString*expiry=[self firstText:a words:@[@"إغلاق تلقائي",@"00:00:",@"EXPIR"]];NSString*payout=[self firstText:a words:@[@"85%",@"84%",@"86%",@"87%",@"88%",@"89%",@"90%",@"91%",@"92%",@"93%",@"94%",@"95%"]];
+self.snapshot=@{@"asset":asset?:@"—",@"investment":investment?:@"—",@"expiry":expiry?:@"—",@"payout":payout?:@"—"};
+self.marketLabel.text=[NSString stringWithFormat:@"Asset: %@\nInvestment: %@  Expiry: %@\nPayout: %@  BUY:%@ SELL:%@",asset,investment,expiry,payout,self.buyTarget?@"mapped":@"—",self.sellTarget?@"mapped":@"—"];
+[self log:[NSString stringWithFormat:@"SCAN views=%lu BUY=%@ SELL=%@",(unsigned long)a.count,self.buyTarget?self.buyTarget[@"class"]:@"none",self.sellTarget?self.sellTarget[@"class"]:@"none"]];}
+- (void)test:(BOOL)buy{[self scanSafe];NSDictionary*d=buy?self.buyTarget:self.sellTarget;NSString*n=buy?@"BUY":@"SELL";if(!d){[self log:[NSString stringWithFormat:@"%@ blocked: target not mapped",n]];return;}UIView*v=d[@"view"];if([v isKindOfClass:UIControl.class]){[(UIControl*)v sendActionsForControlEvents:UIControlEventTouchUpInside];[self log:[NSString stringWithFormat:@"%@ dispatched UIControl",n]];}else{[self log:[NSString stringWithFormat:@"%@ mapped to %@ but no public UIControl dispatcher; no trade sent",n,d[@"class"]]];}}
 - (void)testBuy{[self test:YES];}- (void)testSell{[self test:NO];}
+
+- (void)analyzeNow{[self scanSafe];NSString*key=[self readKey];if(!key.length){[self log:@"ANALYZE blocked: save NVIDIA key first"];return;}NSDictionary*s=self.snapshot?:@{};NSString*prompt=[NSString stringWithFormat:@"Analyze this short-duration trading UI snapshot. Asset: %@. Investment: %@. Expiry: %@. Payout: %@. Return ONLY compact JSON with keys direction (BUY, SELL, or SKIP), confidence (0 to 1), and reason. If market evidence is insufficient, choose SKIP. Do not invent prices or indicators.",s[@"asset"]?:@"unknown",s[@"investment"]?:@"unknown",s[@"expiry"]?:@"unknown",s[@"payout"]?:@"unknown"];
+NSDictionary*body=@{@"model":EOModel,@"messages":@[@{@"role":@"user",@"content":prompt}],@"chat_template_kwargs":@{@"enable_thinking":@NO},@"max_tokens":@256,@"stream":@NO,@"temperature":@0.2};
+NSError*je=nil;NSData*data=[NSJSONSerialization dataWithJSONObject:body options:0 error:&je];if(!data){[self log:@"ANALYZE JSON encode failed"];return;}NSMutableURLRequest*r=[NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"https://integrate.api.nvidia.com/v1/chat/completions"]];r.HTTPMethod=@"POST";r.HTTPBody=data;r.timeoutInterval=25;[r setValue:[@"Bearer " stringByAppendingString:key] forHTTPHeaderField:@"Authorization"];[r setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];[r setValue:@"application/json" forHTTPHeaderField:@"Accept"];self.statusLabel.text=@"Analyzing live snapshot…";[self log:[NSString stringWithFormat:@"ANALYZE → %@",EOModel]];
+[[NSURLSession sharedSession]dataTaskWithRequest:r completionHandler:^(NSData*d,NSURLResponse*resp,NSError*err){if(err){[self log:[@"NVIDIA error: " stringByAppendingString:err.localizedDescription]];return;}NSInteger code=[(NSHTTPURLResponse*)resp statusCode];if(code<200||code>=300){[self log:[NSString stringWithFormat:@"NVIDIA HTTP %ld",(long)code]];return;}NSDictionary*j=[NSJSONSerialization JSONObjectWithData:d options:0 error:nil];NSString*out=j[@"choices"][0][@"message"][@"content"];if(![out isKindOfClass:NSString.class])out=@"Invalid NVIDIA response";dispatch_async(dispatch_get_main_queue(),^{self.statusLabel.text=@"Analysis complete • no auto execution";[self log:[@"AI: " stringByAppendingString:out]];});}]resume];}
 @end
 __attribute__((constructor))static void EOBOTERInitialize(void){dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1*NSEC_PER_SEC)),dispatch_get_main_queue(),^{[[EOBOTEROverlay shared]install];});}
